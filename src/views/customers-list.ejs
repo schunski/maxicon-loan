@@ -1,0 +1,28 @@
+<%- include('partials/header') %>
+<h1>Clientes</h1>
+<p><a class="btn btn-primary" href="/customers/new">Novo cliente</a></p>
+<div class="card">
+  <% if (!customers.length) { %>
+    <p class="hint">Nenhum cliente cadastrado.</p>
+  <% } else { %>
+  <table>
+    <thead>
+      <tr><th>Nome</th><th></th></tr>
+    </thead>
+    <tbody>
+      <% customers.forEach(function (c) { %>
+        <tr>
+          <td><%= c.name %></td>
+          <td class="actions">
+            <a href="/customers/<%= c.id %>/edit" class="btn btn-ghost">Editar</a>
+            <form style="display:inline" method="post" action="/customers/<%= c.id %>/delete" onsubmit="return confirm('Deseja realmente deletar este cliente?');">
+              <button type="submit" class="btn btn-danger">Deletar</button>
+            </form>
+          </td>
+        </tr>
+      <% }); %>
+    </tbody>
+  </table>
+  <% } %>
+</div>
+<%- include('partials/footer') %>

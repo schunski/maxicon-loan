@@ -1,0 +1,13 @@
+<%- include('partials/header') %>
+<h1><%= title %></h1>
+<div class="card">
+  <form method="post" action="<%= customer ? '/customers/' + customer.id : '/customers' %>">
+    <label for="name">Nome</label>
+    <input id="name" name="name" required value="<%= customer ? customer.name : '' %>" maxlength="200">
+    <div class="actions space-y">
+      <button type="submit" class="btn btn-primary">Salvar</button>
+      <a href="/customers" class="btn btn-ghost">Cancelar</a>
+    </div>
+  </form>
+</div>
+<%- include('partials/footer') %>

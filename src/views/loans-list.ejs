@@ -1,0 +1,34 @@
+<%- include('partials/header') %>
+<h1>Empréstimos</h1>
+<p><a class="btn btn-primary" href="/loans/new">Novo empréstimo</a></p>
+<div class="card card-loans">
+  <% if (!loans.length) { %>
+    <p class="hint">Nenhum empréstimo cadastrado.</p>
+  <% } else { %>
+  <table class="table-loans">
+    <thead>
+      <tr>
+        <th>Cliente</th>
+        <th>Moeda</th>
+        <th>Data de vencimento</th>
+        <th class="num">Meses</th>
+        <th class="num">Valor no vencimento (BRL)</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% loans.forEach(function (e) { %>
+        <tr>
+          <td data-label="Cliente"><span class="td-val"><%= e.customer_name %></span></td>
+          <td data-label="Moeda"><span class="td-val"><%= e.currency %></span></td>
+          <td data-label="Vencimento"><span class="td-val"><%= formatDateBr(e.due_date) %></span></td>
+          <td class="num" data-label="Meses"><span class="td-val"><%= e.termMonths != null ? e.termMonths : '—' %></span></td>
+          <td class="num" data-label="Valor (BRL)"><span class="td-val"><%= e.maturityBrl != null ? e.maturityBrl.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—' %></span></td>
+          <td class="td-action" data-label=""><a href="/loans/<%= e.id %>" class="btn btn-ghost">Detalhes</a></td>
+        </tr>
+      <% }); %>
+    </tbody>
+  </table>
+  <% } %>
+</div>
+<%- include('partials/footer') %>

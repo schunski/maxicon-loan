@@ -1,0 +1,190 @@
+<%- include('partials/header') %>
+<h1><%= title %></h1>
+<% if (exchangeError) { %>
+<div class="msg-erro"><%= exchangeError %></div>
+<% } %>
+<div class="card">
+  <form id="loan-form" method="post" action="<%= loan && loan.id ? '/loans/' + loan.id : '/loans' %>">
+    <label for="customer_id">Cliente</label>
+    <select id="customer_id" name="customer_id" required>
+      <option value="">Selecione...</option>
+      <% customers.forEach(function (c) { %>
+        <option value="<%= c.id %>" <%= loan && String(loan.customer_id) === String(c.id) ? 'selected' : '' %>><%= c.name %></option>
+      <% }); %>
+    </select>
+
+    <label for="currency">Moeda (lista BCB + BRL)</label>
+    <select id="currency" name="currency" required>
+      <% currencies.forEach(function (m) { %>
+        <option value="<%= m.simbolo %>" <%= loan && loan.currency === m.simbolo ? 'selected' : '' %>><%= m.simbolo %> — <%= m.label %></option>
+      <% }); %>
+    </select>
+
+    <label for="amount">Valor do empréstimo (na moeda)</label>
+    <input id="amount" name="amount" type="text" inputmode="decimal" required
+      value="<%= loan ? loan.amount : '' %>">
+
+    <label for="quote_preview">Cotação (PTAX venda) para BRL (pré-visualização)</label>
+    <input id="quote_preview" type="text" readonly placeholder="Selecione uma moeda para carregar">
+    <p class="hint">Ao salvar, o servidor busca a cotação do BCB novamente e armazena a taxa. Use o botão para pré-visualizar.</p>
+    <button type="button" class="btn btn-ghost" id="btn-quote">Atualizar cotação (BCB)</button>
+
+    <label for="loan_date">Data do empréstimo</label>
+    <input id="loan_date" name="loan_date" class="date-br" type="text" inputmode="numeric" required autocomplete="off"
+      placeholder="dd/mm/aaaa" maxlength="10" spellcheck="false" aria-describedby="loan_date-hint"
+      data-date-hint="loan_date-hint"
+      value="<%= loan ? loan.loan_date : '' %>">
+    <p id="loan_date-hint" class="date-br-hint" aria-live="polite"></p>
+
+    <label for="due_date">Data de vencimento</label>
+    <input id="due_date" name="due_date" class="date-br" type="text" inputmode="numeric" required autocomplete="off"
+      placeholder="dd/mm/aaaa" maxlength="10" spellcheck="false" aria-describedby="due_date-hint"
+      data-date-hint="due_date-hint"
+      value="<%= loan ? loan.due_date : '' %>">
+    <p id="due_date-hint" class="date-br-hint" aria-live="polite"></p>
+
+    <label for="annual_interest_rate_percent">Taxa de juros anual (%)</label>
+    <input id="annual_interest_rate_percent" name="annual_interest_rate_percent" type="text" inputmode="decimal" required
+      value="<%= loan ? loan.annual_interest_rate_percent : '' %>">
+
+    <div class="actions space-y">
+      <button type="submit" class="btn btn-primary">Salvar</button>
+      <a href="/loans" class="btn btn-ghost">Cancelar</a>
+    </div>
+  </form>
+</div>
+<script>
+(function () {
+  var sel = document.getElementById('currency');
+  var out = document.getElementById('quote_preview');
+  var btn = document.getElementById('btn-quote');
+  function refDateBr(ref) {
+    if (!ref) return '';
+    var p = String(ref).match(/^(\d{2})-(\d{2})-(\d{4})$/);
+    if (p) return p[2] + '/' + p[1] + '/' + p[3];
+    return ref;
+  }
+  function load() {
+    var m = sel.value;
+    if (!m) return;
+    out.value = 'Carregando...';
+    fetch('/api/quote?currency=' + encodeURIComponent(m))
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        out.value = m === 'BRL' ? '1.0000 (BRL)' : (j.quote != null ? Number(j.quote).toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 6 }) : '—') + ' — ref. ' + refDateBr(j.referenceDate || '');
+      })
+      .catch(function () { out.value = 'Falha ao buscar cotação do BCB'; });
+  }
+  sel.addEventListener('change', load);
+  btn.addEventListener('click', load);
+  if (sel.value) load();
+})();
+
+(function () {
+  function digitsToBrDate(digits) {
+    var d = String(digits).replace(/\D/g, '').slice(0, 8);
+    if (d.length <= 2) return d;
+    if (d.length <= 4) return d.slice(0, 2) + '/' + d.slice(2);
+    return d.slice(0, 2) + '/' + d.slice(2, 4) + '/' + d.slice(4);
+  }
+
+  function isValidCalendarDate(dd, mm, yyyy) {
+    if (yyyy < 1900 || yyyy > 2100) return false;
+    if (mm < 1 || mm > 12) return false;
+    if (dd < 1 || dd > 31) return false;
+    var t = new Date(yyyy, mm - 1, dd);
+    return t.getFullYear() === yyyy && t.getMonth() === mm - 1 && t.getDate() === dd;
+  }
+
+  function validateBrDateComplete(value) {
+    var m = String(value).trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (!m) return { ok: false, message: 'Use 8 números: dd/mm/aaaa.' };
+    var dd = parseInt(m[1], 10);
+    var mm = parseInt(m[2], 10);
+    var yyyy = parseInt(m[3], 10);
+    if (!isValidCalendarDate(dd, mm, yyyy)) {
+      return { ok: false, message: 'Data inválida ou inexistente no calendário.' };
+    }
+    return { ok: true, message: '' };
+  }
+
+  function setHint(el, text, isError) {
+    var id = el.getAttribute('data-date-hint');
+    var hint = id ? document.getElementById(id) : null;
+    if (!hint) return;
+    hint.textContent = text || '';
+    hint.classList.toggle('is-error', !!isError);
+  }
+
+  function applyValidity(el) {
+    var v = el.value.trim();
+    el.setCustomValidity('');
+    if (!v) {
+      setHint(el, 'Digite só números; as barras são colocadas automaticamente (8 dígitos).', false);
+      return;
+    }
+    if (v.length < 10) {
+      el.setCustomValidity('Complete a data: dd/mm/aaaa (8 números).');
+      setHint(el, 'Faltam dígitos. São 8 números no total (dd/mm/aaaa).', true);
+      return;
+    }
+    var r = validateBrDateComplete(v);
+    if (!r.ok) {
+      el.setCustomValidity(r.message);
+      setHint(el, r.message, true);
+      return;
+    }
+    setHint(el, '', false);
+  }
+
+  function wireDateField(el) {
+    setHint(el, 'Digite só números; as barras são colocadas automaticamente (8 dígitos).', false);
+
+    el.addEventListener('input', function () {
+      var pos = el.selectionStart;
+      var before = el.value;
+      var digits = before.replace(/\D/g, '');
+      var next = digitsToBrDate(digits);
+      if (next !== before) {
+        el.value = next;
+        var len = next.length;
+        try {
+          el.setSelectionRange(len, len);
+        } catch (e) { /* ignore */ }
+      }
+      el.setCustomValidity('');
+      var v = el.value.trim();
+      if (v.length === 10) {
+        var r = validateBrDateComplete(v);
+        setHint(el, r.ok ? '' : r.message, !r.ok);
+      } else if (v.length > 0) {
+        setHint(el, 'Faltam ' + (10 - v.length) + ' caractere(s) para completar dd/mm/aaaa.', false);
+      } else {
+        setHint(el, 'Digite só números; as barras são colocadas automaticamente (8 dígitos).', false);
+      }
+    });
+
+    el.addEventListener('blur', function () {
+      applyValidity(el);
+    });
+  }
+
+  document.querySelectorAll('input.date-br').forEach(function (el) {
+    wireDateField(el);
+    if (el.value.trim().length === 10) applyValidity(el);
+  });
+
+  var form = document.getElementById('loan-form');
+  if (form) {
+    form.addEventListener('submit', function (e) {
+      var ok = true;
+      document.querySelectorAll('input.date-br').forEach(function (el) {
+        applyValidity(el);
+        if (!el.checkValidity()) ok = false;
+      });
+      if (!ok) e.preventDefault();
+    });
+  }
+})();
+</script>
+<%- include('partials/footer') %>

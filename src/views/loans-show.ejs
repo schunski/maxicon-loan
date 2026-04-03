@@ -1,0 +1,28 @@
+<%- include('partials/header') %>
+<h1>Empréstimo #<%= loan.id %></h1>
+<div class="card">
+  <dl class="grid">
+    <dt>Cliente</dt><dd><%= loan.customer_name %></dd>
+    <dt>Data do empréstimo</dt><dd><%= formatDateBr(loan.loan_date) %></dd>
+    <dt>Data de vencimento</dt><dd><%= formatDateBr(loan.due_date) %></dd>
+    <dt>Moeda</dt><dd><%= loan.currency %></dd>
+    <dt>Valor do empréstimo</dt><dd class="num"><%= Number(loan.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) %></dd>
+    <dt>Cotação (PTAX venda)</dt><dd class="num"><%= Number(loan.brl_rate).toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 6 }) %></dd>
+    <% if (loan.quote_reference_date) { %>
+    <dt>Data da cotação (BCB)</dt><dd><%= formatDateBr(loan.quote_reference_date) %></dd>
+    <% } %>
+    <dt>Taxa de juros anual (%)</dt><dd class="num"><%= Number(loan.annual_interest_rate_percent).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) %></dd>
+    <dt>Prazo (meses)</dt><dd><%= loan.termMonths != null ? loan.termMonths : '—' %></dd>
+    <dt>Principal (BRL)</dt><dd class="num"><%= loan.principalBrl != null ? loan.principalBrl.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—' %></dd>
+    <dt>Valor no vencimento (BRL)</dt><dd class="num"><strong><%= loan.maturityBrl != null ? loan.maturityBrl.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—' %></strong></dd>
+  </dl>
+  <p class="hint">Valor no vencimento: juros compostos com taxa anual efetiva VF = PV × (1 + r)<sup>n/12</sup>.</p>
+  <div class="actions">
+    <a href="/loans/<%= loan.id %>/edit" class="btn btn-primary">Editar</a>
+    <form method="post" action="/loans/<%= loan.id %>/delete" style="display:inline" onsubmit="return confirm('Deseja realmente deletar este empréstimo?');">
+      <button type="submit" class="btn btn-danger">Deletar</button>
+    </form>
+    <a href="/loans" class="btn btn-ghost">Listar</a>
+  </div>
+</div>
+<%- include('partials/footer') %>
